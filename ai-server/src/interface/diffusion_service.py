@@ -10,8 +10,9 @@ import asyncio
 import multiprocessing
 from loguru import logger
 
-import diffusion_processing_pb2
-import diffusion_processing_pb2_grpc
+from interface import diffusion_processing_pb2
+from interface import diffusion_processing_pb2_grpc
+from worker.adpater import RedisSDAdapter
 
 class DiffusionProcessingServicer(diffusion_processing_pb2_grpc.ImageGeneratorServicer):
     """
@@ -23,6 +24,7 @@ class DiffusionProcessingServicer(diffusion_processing_pb2_grpc.ImageGeneratorSe
         redis_client: redis.Redis,
         queue_key: str,
         result_key_prefix: str,
+        result_channel_prefix: str,
         processing_timeout: int,
     ):
         self.redis_client = redis_client
@@ -31,7 +33,7 @@ class DiffusionProcessingServicer(diffusion_processing_pb2_grpc.ImageGeneratorSe
         self.timeout = processing_timeout
         
         # Redis Pub/Sub 채널을 위한 접두사
-        self.result_channel_prefix = "result:channel:"
+        self.result_channel_prefix = result_channel_prefix
         
         logger.info(f"DiffusionProcessingServicer initialized.")
         logger.info(f"Using job queue: '{self.queue_key}'")
@@ -162,7 +164,7 @@ def create_worker_subprocess(config_path: str, worker_type: str, process_name: s
     }
 
     adapter_process = multiprocessing.Process(
-        target=RedisLLEAdapter.run_adapter_in_subprocess,
+        target=RedisSDAdapter.run_adapter_in_subprocess,
         args=process_args,
         kwargs=process_kwargs,
         name=process_name,
